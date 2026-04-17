@@ -5,4 +5,15 @@
 [Bb]uilds/
 [Ll]ogs/
 UserSettings/
+
 .vs/
+*.csproj
+*.unityproj
+*.sln
+*.user
+*.pidb
+*.booproj
+*.svd
+
+.DS_Store
+Thumbs.db
