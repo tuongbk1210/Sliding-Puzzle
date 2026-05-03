@@ -13,6 +13,12 @@ public class GameManager : MonoBehaviour
 
     private bool isShuffling = false;
 
+    public AudioClip clickSound;
+    private AudioSource audioSource;
+
+    public GameTimer timer;
+    private bool hasStarted = false;
+
     void Start()
     {
         CreateTiles();
@@ -20,6 +26,13 @@ public class GameManager : MonoBehaviour
         isShuffling = true;
         Shuffle();
         isShuffling = false;
+
+        audioSource = FindObjectOfType<AudioSource>();
+
+        if (audioSource == null)
+        {
+            Debug.LogError("Không tìm thấy AudioSource trong scene!");
+        }
     }
 
     void CreateTiles()
@@ -43,13 +56,13 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    public void TryMove(Tile tile)
-    {
-        if (IsAdjacent(tile.index, emptyIndex))
-        {
-            Swap(tile.index, emptyIndex);
-        }
-    }
+    //public void TryMove(Tile tile)
+    //{
+    //    if (IsAdjacent(tile.index, emptyIndex))
+    //    {
+    //        Swap(tile.index, emptyIndex);
+    //    }
+    //}
 
     public void TryMoveBySwipe(Tile tile, Vector2 delta)
     {
@@ -70,7 +83,9 @@ public class GameManager : MonoBehaviour
 
         if (IsValidMove(tile.index, targetIndex) && targetIndex == emptyIndex)
         {
+            audioSource.PlayOneShot(clickSound);
             Swap(tile.index, emptyIndex);
+
         }
     }
 
@@ -85,16 +100,23 @@ public class GameManager : MonoBehaviour
             return;
         }
 
+        if (!hasStarted && !isShuffling)
+        {
+            hasStarted = true;
+            timer.StartTimer();
+        }
+
         int temp = tileA.index;
         tileA.index = tileB.index;
         tileB.index = temp;
 
         tileA.transform.SetSiblingIndex(tileA.index);
         tileB.transform.SetSiblingIndex(tileB.index);
-
+    
         emptyIndex = a;
         if (!isShuffling && CheckWin())
         {
+            timer.StopTimer();
             Debug.Log("YOU WIN!");
         }
     }
