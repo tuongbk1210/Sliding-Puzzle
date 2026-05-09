@@ -1,43 +1,119 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
+using System.Collections;
 
 public class GameManager : MonoBehaviour
 {
     public Transform board;
     public Tile tilePrefab;
-    public Sprite[] sprites;
+    //public Sprite[] sprites;
 
     private List<Tile> tiles = new List<Tile>();
-    private int size = 4;
+    private int size = 3;
     private int emptyIndex;
 
     private bool isShuffling = false;
 
     public AudioClip clickSound;
-    private AudioSource audioSource;
 
     public GameTimer timer;
     private bool hasStarted = false;
 
+    public Image originalImage;
+
+    public GridController gridController;
+
+    [Header("Level UI")]
+    public PopupSlide popupLevel;
+
+    public LevelButtonUI button3x3;
+    public LevelButtonUI button4x4;
+    public LevelButtonUI button5x5;
+
+    private bool isChangingLevel = false;
+
+
     void Start()
     {
-        CreateTiles();
+        originalImage.sprite = SelectedImageData.selectedSprite;
+        //CreateTiles();
+        gridController.SetupGrid(size);
+        GenerateFromImage(size);
 
-        isShuffling = true;
-        Shuffle();
-        isShuffling = false;
+        //isShuffling = true;
+        //Shuffle();
+        //isShuffling = false;
 
-        audioSource = FindObjectOfType<AudioSource>();
-
-        if (audioSource == null)
-        {
-            Debug.LogError("Không tìm thấy AudioSource trong scene!");
-        }
     }
 
-    void CreateTiles()
+
+    public void SelectLevel(int level)
     {
-        for (int i = 0; i < sprites.Length; i++)
+
+        StartCoroutine(ChangeLevel(level));
+     
+    }
+
+    IEnumerator ChangeLevel(int level)
+    {
+        isChangingLevel = true;
+        LevelManager.Instance.SetLevel(level);
+
+        popupLevel.TogglePopup();
+
+        yield return new WaitForSeconds(popupLevel.duration);
+
+        gridController.SetupGrid(level);
+
+        GenerateFromImage(level);
+        isChangingLevel = false;
+    }
+
+
+    public void GenerateFromImage(int gridSize)
+    {
+        size = gridSize;
+        hasStarted = false;
+
+        if (timer != null)
+        {
+            timer.ResetTimer();
+        }
+
+        Texture2D texture = originalImage.sprite.texture;
+
+        int width = texture.width / size;
+        int height = texture.height / size;
+
+       
+        tiles.Clear();
+        emptyIndex = -1;
+        for (int i = board.childCount - 1; i >= 0; i--)
+        {
+            DestroyImmediate(board.GetChild(i).gameObject);
+        }
+        Canvas.ForceUpdateCanvases();
+
+        List<Sprite> sprites = new List<Sprite>();
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                Rect rect = new Rect(x * width, y * height, width, height);
+
+                Sprite tile = Sprite.Create(
+                    texture,
+                    rect,
+                    new Vector2(0.5f, 0.5f)
+                );
+
+                sprites.Add(tile);
+            }
+        }
+
+        for (int i = 0; i < sprites.Count; i++)
         {
             Tile tile = Instantiate(tilePrefab, board);
 
@@ -46,7 +122,7 @@ public class GameManager : MonoBehaviour
             tile.manager = this;
             tile.SetImage(sprites[i]);
 
-            if (i == sprites.Length - 1)
+            if (i == sprites.Count - 1)
             {
                 tile.SetEmpty(true);
                 emptyIndex = i;
@@ -54,7 +130,52 @@ public class GameManager : MonoBehaviour
 
             tiles.Add(tile);
         }
+
+        isShuffling = true;
+        Shuffle();
+        isShuffling = false;
+
+        RefreshTileIndexes();
     }
+
+    //public void Set3x3()
+    //{
+    //    gridController.SetupGrid(3);
+    //    GenerateFromImage(3);
+    //}
+
+    //public void Set4x4()
+    //{
+    //    gridController.SetupGrid(4);
+    //    GenerateFromImage(4);
+    //}
+
+    //public void Set5x5()
+    //{
+    //    gridController.SetupGrid(5);
+    //    GenerateFromImage(5);
+    //}
+
+    //void CreateTiles()
+    //{
+    //    for (int i = 0; i < sprites.Length; i++)
+    //    {
+    //        Tile tile = Instantiate(tilePrefab, board);
+
+    //        tile.index = i;
+    //        tile.correctIndex = i;
+    //        tile.manager = this;
+    //        tile.SetImage(sprites[i]);
+
+    //        if (i == sprites.Length - 1)
+    //        {
+    //            tile.SetEmpty(true);
+    //            emptyIndex = i;
+    //        }
+
+    //        tiles.Add(tile);
+    //    }
+    //}
 
     //public void TryMove(Tile tile)
     //{
@@ -64,41 +185,105 @@ public class GameManager : MonoBehaviour
     //    }
     //}
 
+    void RefreshTileIndexes()
+    {
+        for (int i = 0; i < board.childCount; i++)
+        {
+            Tile tile = board.GetChild(i).GetComponent<Tile>();
+
+            if (tile != null)
+            {
+                tile.index = i;
+
+                if (!tile.image.enabled)
+                {
+                    emptyIndex = i;
+                }
+            }
+        }
+    }
+
     public void TryMoveBySwipe(Tile tile, Vector2 delta)
     {
-        if (delta.magnitude < 50f) return;
+        if (isShuffling) return;
+        if (isChangingLevel)
+            return;
+        if (delta.magnitude < 50f)
+            return;
 
-        int targetIndex = -1;
+        // tile phải nằm cạnh empty
+        if (!IsAdjacent(tile.index, emptyIndex))
+            return;
 
-        if (Mathf.Abs(delta.x) > Mathf.Abs(delta.y))
-        {
-            // ngang
-            targetIndex = delta.x > 0 ? tile.index + 1 : tile.index - 1;
-        }
-        else
-        {
-            // dọc
-            targetIndex = delta.y > 0 ? tile.index - size : tile.index + size;
-        }
+        int tileX = tile.index % size;
+        int tileY = tile.index / size;
 
-        if (IsValidMove(tile.index, targetIndex) && targetIndex == emptyIndex)
+        int emptyX = emptyIndex % size;
+        int emptyY = emptyIndex / size;
+
+        Vector2 dir = delta.normalized;
+
+        bool valid = false;
+
+        // empty ở bên phải
+        if (emptyX > tileX && dir.x > 0.5f)
+            valid = true;
+
+        // empty ở bên trái
+        if (emptyX < tileX && dir.x < -0.5f)
+            valid = true;
+
+        // empty ở phía dưới
+        if (emptyY > tileY && dir.y < -0.5f)
+            valid = true;
+
+        // empty ở phía trên
+        if (emptyY < tileY && dir.y > 0.5f)
+            valid = true;
+
+        if (valid)
         {
-            audioSource.PlayOneShot(clickSound);
+            SoundManager.Instance.PlaySound(clickSound);
+
             Swap(tile.index, emptyIndex);
-
         }
     }
 
     void Swap(int a, int b)
     {
-        Tile tileA = tiles.Find(t => t.index == a);
-        Tile tileB = tiles.Find(t => t.index == b);
+        Tile tileA = null;
+        Tile tileB = null;
+
+        foreach (Tile t in tiles)
+        {
+            if (t.index == a)
+                tileA = t;
+
+            if (t.index == b)
+                tileB = t;
+        }
 
         if (tileA == null || tileB == null)
         {
-            Debug.LogError("Swap lỗi: tile null");
+            Debug.LogError("Swap lỗi");
             return;
         }
+
+        int oldA = tileA.index;
+        int oldB = tileB.index;
+
+        tileA.index = oldB;
+        tileB.index = oldA;
+
+        tileA.transform.SetSiblingIndex(oldB);
+        tileB.transform.SetSiblingIndex(oldA);
+        Canvas.ForceUpdateCanvases();
+
+        LayoutRebuilder.ForceRebuildLayoutImmediate(
+            board.GetComponent<RectTransform>()
+        );
+
+        emptyIndex = oldA;
 
         if (!hasStarted && !isShuffling)
         {
@@ -106,14 +291,6 @@ public class GameManager : MonoBehaviour
             timer.StartTimer();
         }
 
-        int temp = tileA.index;
-        tileA.index = tileB.index;
-        tileB.index = temp;
-
-        tileA.transform.SetSiblingIndex(tileA.index);
-        tileB.transform.SetSiblingIndex(tileB.index);
-    
-        emptyIndex = a;
         if (!isShuffling && CheckWin())
         {
             timer.StopTimer();
@@ -180,4 +357,6 @@ public class GameManager : MonoBehaviour
         }
         return true;
     }
+
+
 }

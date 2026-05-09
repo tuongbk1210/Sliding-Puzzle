@@ -21,6 +21,14 @@ public class GameTimer : MonoBehaviour
         isRunning = false;
     }
 
+    public void ResetTimer()
+    {
+        time = 0f;
+        isRunning = false;
+
+        timeText.text = "00:00";
+    }
+
     void Update()
     {
         if (!isRunning)
