@@ -33,6 +33,11 @@ public class GameManager : MonoBehaviour
 
     private bool isChangingLevel = false;
 
+    [Header("Result")]
+    public ResultPopup resultPopup;
+    public AudioClip winSound;
+    private int moveCount = 0;
+
 
     void Start()
     {
@@ -75,6 +80,7 @@ public class GameManager : MonoBehaviour
     {
         size = gridSize;
         hasStarted = false;
+        moveCount = 0;
 
         if (timer != null)
         {
@@ -101,7 +107,17 @@ public class GameManager : MonoBehaviour
         {
             for (int x = 0; x < size; x++)
             {
-                Rect rect = new Rect(x * width, y * height, width, height);
+                int index = y * size + x;
+
+                if (index == size * size - 1)
+                    continue;
+
+                Rect rect = new Rect(
+                            x * width,
+                            texture.height - (y + 1) * height,
+                            width,
+                            height
+                            );
 
                 Sprite tile = Sprite.Create(
                     texture,
@@ -120,16 +136,24 @@ public class GameManager : MonoBehaviour
             tile.index = i;
             tile.correctIndex = i;
             tile.manager = this;
-            tile.SetImage(sprites[i]);
 
-            if (i == sprites.Count - 1)
-            {
-                tile.SetEmpty(true);
-                emptyIndex = i;
-            }
+            tile.SetImage(sprites[i]);
 
             tiles.Add(tile);
         }
+
+
+        Tile emptyTile = Instantiate(tilePrefab, board);
+
+        emptyTile.index = size * size - 1;
+        emptyTile.correctIndex = size * size - 1;
+        emptyTile.manager = this;
+
+        emptyTile.SetEmpty(true);
+
+        tiles.Add(emptyTile);
+
+        emptyIndex = size * size - 1;
 
         isShuffling = true;
         Shuffle();
@@ -244,7 +268,7 @@ public class GameManager : MonoBehaviour
         if (valid)
         {
             SoundManager.Instance.PlaySound(clickSound);
-
+            moveCount++;
             Swap(tile.index, emptyIndex);
         }
     }
@@ -275,8 +299,9 @@ public class GameManager : MonoBehaviour
         tileA.index = oldB;
         tileB.index = oldA;
 
-        tileA.transform.SetSiblingIndex(oldB);
-        tileB.transform.SetSiblingIndex(oldA);
+        tileA.transform.SetSiblingIndex(tileA.index);
+        tileB.transform.SetSiblingIndex(tileB.index);
+        RefreshTileIndexes();
         Canvas.ForceUpdateCanvases();
 
         LayoutRebuilder.ForceRebuildLayoutImmediate(
@@ -293,9 +318,21 @@ public class GameManager : MonoBehaviour
 
         if (!isShuffling && CheckWin())
         {
-            timer.StopTimer();
-            Debug.Log("YOU WIN!");
+            StartCoroutine(ShowWinPopup());
         }
+    }
+
+    IEnumerator ShowWinPopup()
+    {
+        timer.StopTimer();
+
+        SoundManager.Instance.PlaySound(winSound);
+
+        yield return new WaitForSeconds(1f);
+
+        resultPopup.Show(size, timer.GetTimeString(), moveCount);
+
+        Debug.Log("YOU WIN!");
     }
 
     bool IsAdjacent(int a, int b)
@@ -350,13 +387,16 @@ public class GameManager : MonoBehaviour
     {
         foreach (var tile in tiles)
         {
-            if (!tile.image.enabled) continue;
+            // bỏ qua ô trống
+            if (tile.isEmpty)
+                continue;
 
+            // tile chưa đúng vị trí
             if (tile.index != tile.correctIndex)
                 return false;
         }
+
         return true;
     }
 
-
-}
+    }

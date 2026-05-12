@@ -17,17 +17,16 @@ public class Tile : MonoBehaviour,
     public Color normalColor = new Color32(249, 248, 234, 255);
     public Color emptyColor;
 
+    public bool isEmpty;
+
     void Awake()
     {
-        if (image == null)
-            image = GetComponent<Image>();
-
         ColorUtility.TryParseHtmlString("#871400", out emptyColor);
     }
 
     public void OnBeginDrag(PointerEventData eventData)
     {
-        if (!image.enabled) return;
+        if (isEmpty) return;
 
         startPos = eventData.position;
     }
@@ -38,7 +37,7 @@ public class Tile : MonoBehaviour,
 
     public void OnEndDrag(PointerEventData eventData)
     {
-        if (!image.enabled) return;
+        if (isEmpty) return;
 
         Vector2 endPos = eventData.position;
         Vector2 delta = endPos - startPos;
@@ -49,14 +48,12 @@ public class Tile : MonoBehaviour,
         {
             manager.TryMoveBySwipe(this, delta);
         }
-        else
-        {
-            Debug.LogError("GameManager chưa được gán!");
-        }
     }
 
     public void SetImage(Sprite sprite)
     {
+        isEmpty = false;
+
         image.sprite = sprite;
         image.enabled = true;
 
@@ -64,13 +61,24 @@ public class Tile : MonoBehaviour,
             bg.color = normalColor;
     }
 
-    public void SetEmpty(bool isEmpty)
+    public void SetEmpty(bool empty)
     {
-        image.enabled = !isEmpty;
+        isEmpty = empty;
 
-        if (bg != null)
+        if (empty)
         {
-            bg.color = isEmpty ? emptyColor : normalColor;
+            image.sprite = null;
+            image.enabled = false;
+
+            if (bg != null)
+                bg.color = emptyColor;
+        }
+        else
+        {
+            image.enabled = true;
+
+            if (bg != null)
+                bg.color = normalColor;
         }
     }
 }
