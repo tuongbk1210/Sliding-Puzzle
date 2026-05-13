@@ -324,15 +324,16 @@ public class GameManager : MonoBehaviour
 
     IEnumerator ShowWinPopup()
     {
+        string finalTime = timer.GetTimeString();
+
         timer.StopTimer();
 
         SoundManager.Instance.PlaySound(winSound);
 
         yield return new WaitForSeconds(1f);
 
-        resultPopup.Show(size, timer.GetTimeString(), moveCount);
+        resultPopup.Show(size, finalTime, moveCount);
 
-        Debug.Log("YOU WIN!");
     }
 
     bool IsAdjacent(int a, int b)

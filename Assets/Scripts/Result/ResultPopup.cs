@@ -12,6 +12,7 @@ public class ResultPopup : MonoBehaviour
     public TMP_Text boardSize;
     public TMP_Text timeTxt;
     public TMP_Text moveText;
+    public AudioClip onClickButton;
  
     public void Show(int level, string time, int moves)
     {
@@ -25,9 +26,12 @@ public class ResultPopup : MonoBehaviour
     public void Hide()
     {
         root.SetActive(false);
+        SoundManager.Instance.PlaySound(onClickButton);
     }
     public void OnPlayAgain()
     {
+        SoundManager.Instance.PlaySound(onClickButton);
         SceneManager.LoadScene("GameImage");
     }
+   
 }
