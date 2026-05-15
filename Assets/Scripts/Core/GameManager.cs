@@ -324,9 +324,9 @@ public class GameManager : MonoBehaviour
 
     IEnumerator ShowWinPopup()
     {
-        string finalTime = timer.GetTimeString();
-
         timer.StopTimer();
+
+        string finalTime = timer.GetTimeString();
 
         SoundManager.Instance.PlaySound(winSound);
 

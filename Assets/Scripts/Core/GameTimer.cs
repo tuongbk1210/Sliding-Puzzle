@@ -9,7 +9,6 @@ public class GameTimer : MonoBehaviour
 
     private float time;
     private bool isRunning = false;
-    private float currentTime;
 
     public void StartTimer()
     {
@@ -32,25 +31,21 @@ public class GameTimer : MonoBehaviour
 
     void Update()
     {
-        currentTime += Time.deltaTime;
         if (!isRunning)
-        {
             return;
-        }else
-        {
-            time += Time.deltaTime;
 
-            int minutes = Mathf.FloorToInt(time / 60);
-            int seconds = Mathf.FloorToInt(time % 60);
+        time += Time.deltaTime;
 
-            timeText.text = string.Format("{0:00}:{1:00}", minutes, seconds);
-        }
+        int minutes = Mathf.FloorToInt(time / 60);
+        int seconds = Mathf.FloorToInt(time % 60);
+
+        timeText.text = string.Format("{0:00}:{1:00}", minutes, seconds);
     }
 
     public string GetTimeString()
     {
-        int minutes = Mathf.FloorToInt(currentTime / 60);
-        int seconds = Mathf.FloorToInt(currentTime % 60);
+        int minutes = Mathf.FloorToInt(time / 60);
+        int seconds = Mathf.FloorToInt(time % 60);
 
         return string.Format("{0:00}:{1:00}", minutes, seconds);
     }
